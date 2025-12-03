@@ -1,0 +1,33 @@
+body {
+    background: #1e1e1e;
+    color: white;
+    text-align: center;
+    font-family: Arial;
+}
+
+#freq {
+    font-size: 28px;
+    margin: 20px;
+    color: #00ff7f;
+}
+
+pre {
+    background: #111;
+    padding: 20px;
+    width: 350px;
+    margin: auto;
+    font-size: 18px;
+}
+
+button {
+    padding: 10px 25px;
+    font-size: 18px;
+    background: #008000;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #00a000;
+}
