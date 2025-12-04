@@ -31,3 +31,19 @@ button {
 button:hover {
     background: #00a000;
 }
+
+#volume-bar-bg {
+    width: 300px;
+    height: 20px;
+    background: #333;
+    margin: 10px auto;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#volume-bar {
+    height: 100%;
+    width: 0%;
+    background: #00ff7f;
+    transition: width 0.05s linear;
+}

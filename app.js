@@ -10,6 +10,16 @@
 
   const TOLERANCES = { 6:5, 5:5, 4:7, 3:10, 2:12, 1:15 };
 
+  // ====== 追加：音量メーター処理 ======
+  let rms = 0;
+  for (let i = 0; i < buf.length; i++) {
+      rms += buf[i] * buf[i];
+  }
+  rms = Math.sqrt(rms / buf.length);
+
+  // 0.0〜1.0 で正規化してメーターに反映
+  let volumePercent = Math.min(100, rms * 400);  // 400は感度調整
+  document.getElementById("volume-bar").style.width = volumePercent + "%";
   // 周波数テーブル（6弦〜1弦, 0〜3フレット）
   const freqTable = [];
   for (let string = 6; string >= 1; string--) {
