@@ -48,6 +48,7 @@ button:hover {
     transition: width 0.05s linear;
 }
 
+/* 下部 VUメーター */
 #vu-meter-bg {
     position: fixed;
     bottom: 20px;
