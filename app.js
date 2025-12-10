@@ -22,8 +22,8 @@
   let tabLines = ["E|","A|","D|","G|","B|","E|"];
   function updateTAB(string, fret) {
     const idx = 6 - string;
-    for (let i = 0; i < 6; i++) {tabLines[i] += (i === idx ? fret : "-");}
-    tabEl.textContent = tabLines.map(line => line.slice(-30)).join("\n");
+    for (let i = 0; i < 6; i++) tabLines[i] += (i === idx ? fret : "-");
+    tabEl.textContent = tabLines.map(l => l.slice(-30)).join("\n");
   }
 
   function findClosest(f0) {
@@ -31,6 +31,46 @@
     const c = freqTable.reduce((a, b) => Math.abs(a.freq - f0) < Math.abs(b.freq - f0) ? a : b);
     if (Math.abs(c.freq - f0) > TOLERANCES[c.string]) return null;
     return c;
+  }
+
+  function yin(buffer, threshold = 0.15, sampleRate = SAMPLE_RATE) {
+    const tauMax = Math.min(Math.floor(sampleRate / FMIN), buffer.length - 1);
+    const tauMin = Math.max(2, Math.floor(sampleRate / FMAX));
+    const yinBuffer = new Float64Array(tauMax + 1);
+
+    for (let t = tauMin; t <= tauMax; t++) {
+      let sum = 0;
+      for (let i = 0; i < buffer.length - t; i++) {
+        const diff = buffer[i] - buffer[i + t];
+        sum += diff * diff;
+      }
+      yinBuffer[t] = sum;
+    }
+
+    let runningSum = 0;
+    for (let t = tauMin; t <= tauMax; t++) {
+      runningSum += yinBuffer[t];
+      yinBuffer[t] = yinBuffer[t] * t / runningSum;
+    }
+
+    let tau = -1;
+    for (let t = tauMin; t <= tauMax; t++) {
+      if (yinBuffer[t] < threshold) {
+        tau = t;
+        break;
+      }
+    }
+    if (tau === -1) return null;
+
+    if (tau + 1 <= tauMax && tau - 1 >= tauMin) {
+      const x0 = yinBuffer[tau - 1];
+      const x1 = yinBuffer[tau];
+      const x2 = yinBuffer[tau + 1];
+      const a = (x0 + x2 - 2 * x1) / 2;
+      const b = (x2 - x0) / 2;
+      if (a) tau = tau - b / (2 * a);
+    }
+    return sampleRate / tau;
   }
 
   let audioContext = null;
@@ -64,18 +104,14 @@
     const block = readBlock();
     if (!block) return;
 
-    // 音量計算
+    // 音量バー
     let rms = 0;
     for (let i = 0; i < block.length; i++) rms += block[i] ** 2;
     rms = Math.sqrt(rms / block.length);
     const volumePercent = Math.min(100, rms * 400);
-
-    // 上部バー
     document.getElementById("volume-bar").style.width = volumePercent + "%";
-    // 下部 VUメーター
     document.getElementById("vu-meter").style.width = volumePercent + "%";
 
-    // 周波数解析
     const f0 = yin(block, 0.15, audioContext.sampleRate || SAMPLE_RATE);
     if (!f0 || isNaN(f0) || f0 <= 0) return;
     freqLabel.textContent = `${f0.toFixed(1)} Hz`;
@@ -88,7 +124,7 @@
 
     const counts = {};
     for (const r of recentNotes) counts[r] = (counts[r] || 0) + 1;
-    const best = Object.entries(counts).find(([k, v]) => v >= 1);
+    const best = Object.entries(counts).find(([k, v]) => v >= 1); // 1にして即反映
     if (!best) return;
 
     const [s, f] = best[0].split('-').map(Number);
