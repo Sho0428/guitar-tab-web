@@ -22,8 +22,8 @@
   let tabLines = ["E|","A|","D|","G|","B|","E|"];
   function updateTAB(string, fret) {
     const idx = 6 - string;
-    for (let i = 0; i < 6; i++) tabLines[i] += (i === idx ? fret : "-");
-    tabEl.textContent = tabLines.map(l => l.slice(-30)).join("\n");
+    for (let i = 0; i < 6; i++) {tabLines[i] += (i === idx ? fret : "-");}
+    tabEl.textContent = tabLines.map(line => line.slice(-30)).join("\n");
   }
 
   function findClosest(f0) {
@@ -88,7 +88,7 @@
 
     const counts = {};
     for (const r of recentNotes) counts[r] = (counts[r] || 0) + 1;
-    const best = Object.entries(counts).find(([k, v]) => v >= 3);
+    const best = Object.entries(counts).find(([k, v]) => v >= 1);
     if (!best) return;
 
     const [s, f] = best[0].split('-').map(Number);
