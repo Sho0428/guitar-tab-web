@@ -75,14 +75,18 @@
     const block = readBlock();
     if (!block) return;
 
-    // 音量計算（メーター表示）
+    // ==== 音量計算 ====
     let rms = 0;
     for (let i = 0; i < block.length; i++) rms += block[i] ** 2;
     rms = Math.sqrt(rms / block.length);
     const volumePercent = Math.min(100, rms * 400);
-    document.getElementById("volume-bar").style.width = volumePercent + "%";
 
-    // 周波数判定
+    // 上部バー
+    document.getElementById("volume-bar").style.width = volumePercent + "%";
+    // 下部 VUメーター
+    document.getElementById("vu-meter").style.width = volumePercent + "%";
+
+    // ==== 周波数判定 ====
     const f0 = yin(block, 0.15, audioContext.sampleRate || SAMPLE_RATE);
     if (!f0 || isNaN(f0) || f0 <= 0) return;
     freqLabel.textContent = `${f0.toFixed(1)} Hz`;
@@ -115,7 +119,7 @@
       workletNode.port.onmessage = (e) => handleIncomingChunk(e.data);
 
       source.connect(workletNode);
-      // workletNode.connect(audioContext.destination); // 不要で消音
+      // workletNode.connect(audioContext.destination); // 出力不要
 
       startBtn.disabled = true;
       stopBtn.disabled = false;
