@@ -182,12 +182,13 @@ const fminValue = document.getElementById("fmin-value");
 const fmaxValue = document.getElementById("fmax-value");
 
 fminSlider.addEventListener("input", () => {
-    FMIN = Number(fminSlider.value);
-    fminValue.textContent = FMIN;
+    FMIN = Number(fminSlider.value);      // グローバル変数を更新
+    fminValue.textContent = FMIN;         // UI に反映
 });
+
 fmaxSlider.addEventListener("input", () => {
-    FMAX = Number(fmaxSlider.value);
-    fmaxValue.textContent = FMAX;
+    FMAX = Number(fmaxSlider.value);      // グローバル変数を更新
+    fmaxValue.textContent = FMAX;         // UI に反映
 });
 
 function yin(buffer, threshold = 0.15, sampleRate = SAMPLE_RATE) {
