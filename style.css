@@ -11,10 +11,13 @@ body {
     color: #00ff7f;
 }
 
-#result {
-    font-size: 26px;
-    margin: 20px;
-    color: #ffa500;
+pre {
+    background: #111;
+    padding: 20px;
+    width: 350px;
+    margin: auto;
+    font-size: 18px;
+    white-space: pre;
 }
 
 button {
@@ -37,10 +40,24 @@ button:hover {
     border-radius: 10px;
     overflow: hidden;
 }
-
 #volume-bar {
     height: 100%;
     width: 0%;
     background: #00ff7f;
     transition: width 0.05s linear;
+}
+
+.slider-box {
+    margin: 20px auto;
+    width: 300px;
+    text-align: left;
+    font-size: 16px;
+}
+
+.slider-box input[type=range] {
+    width: 100%;
+}
+
+.btns {
+    margin: 20px;
 }

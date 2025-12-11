@@ -1,34 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Guitar Pitch Detector</title>
+    <title>🎸 Web タブ譜自動判定</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h2>🎸 Guitar Pitch Detector</h2>
-<div id="freq">-- Hz</div>
+<h2>🎵 現在の音</h2>
+<div id="freq">---</div>
 
+<!-- TAB 譜 -->
+<pre id="tab">
+E|
+A|
+D|
+G|
+B|
+E|
+</pre>
+
+<!-- 音量バー -->
 <div id="volume-bar-bg">
     <div id="volume-bar"></div>
 </div>
 
-<div id="result">コード: ---</div>
+<!-- 帯域スライダー -->
+<div class="slider-box">
+    <label>FMIN: <span id="fmin-val">50</span> Hz</label>
+    <input type="range" id="fmin" min="20" max="200" value="50">
 
-<h3 style="margin-top:20px;">🎚 入力帯域フィルター設定</h3>
+    <br>
 
-<div style="width:320px;margin:0 auto;text-align:left;">
-    <label>最低周波数: <span id="fmin-val">50</span> Hz</label>
-    <input type="range" id="fmin" min="30" max="200" value="50" step="1">
-    
-    <label>最高周波数: <span id="fmax-val">800</span> Hz</label>
-    <input type="range" id="fmax" min="300" max="2000" value="800" step="1">
+    <label>FMAX: <span id="fmax-val">800</span> Hz</label>
+    <input type="range" id="fmax" min="200" max="1500" value="800">
 </div>
 
+<div class="btns">
+    <button id="start-btn">▶ 開始</button>
+</div>
 
-<button id="start">Start</button>
-
-<script src="script.js"></script>
+<!-- JS -->
+<script src="app.js"></script>
 </body>
 </html>
