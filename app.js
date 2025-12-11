@@ -1,131 +1,106 @@
-(() => {
+let audioContext;
+let workletNode;
+let source;
 
-  // ===== 帯域調整 =====
-  let FMIN = 50;
-  let FMAX = 800;
+// 弦の基本周波数
+const STRINGS = [
+    {name:"E", freq:329.63},
+    {name:"B", freq:246.94},
+    {name:"G", freq:196.00},
+    {name:"D", freq:146.83},
+    {name:"A", freq:110.00},
+    {name:"E", freq:82.41},
+];
 
-  const fminSlider = document.getElementById("fmin");
-  const fmaxSlider = document.getElementById("fmax");
-  const fminVal = document.getElementById("fmin-val");
-  const fmaxVal = document.getElementById("fmax-val");
+// ➤ 指板計算
+function findClosestStringFret(freq) {
+    if (!freq) return null;
 
-  fminSlider.addEventListener("input", e => {
-    FMIN = Number(e.target.value);
-    fminVal.textContent = FMIN;
-  });
+    let best = null;
+    let minDiff = Infinity;
 
-  fmaxSlider.addEventListener("input", e => {
-    FMAX = Number(e.target.value);
-    fmaxVal.textContent = FMAX;
-  });
+    STRINGS.forEach((s, idx) => {
+        for (let fret = 0; fret <= 20; fret++) {
+            const f2 = s.freq * Math.pow(2, fret / 12);
+            const diff = Math.abs(f2 - freq);
+            if (diff < minDiff) {
+                minDiff = diff;
+                best = { string: idx, fret };
+            }
+        }
+    });
+    return best;
+}
 
-  // ===== ギター基準音 =====
-  const OPEN_STRINGS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
-  const TOLERANCES = { 6:5, 5:5, 4:7, 3:10, 2:12, 1:15 };
+// ➤ タブ譜更新
+function updateTab(stringIndex, fret) {
+    const tab = document.getElementById("tab").innerText.split("\n");
+    tab[5 - stringIndex] += `-${fret}-`;
+    document.getElementById("tab").innerText = tab.join("\n");
+}
 
-  const tabEl = document.getElementById("tab");
-  const freqLabel = document.getElementById("freq");
-  const volumeBar = document.getElementById("volume-bar");
+// ➤ 音量バー更新
+function updateVolume(buffer) {
+    let rms = Math.sqrt(buffer.reduce((s, x) => s + x * x, 0) / buffer.length);
+    let db = rms * 200; 
+    db = Math.min(100, Math.max(0, db));
+    document.getElementById("volume-bar").style.width = db + "%";
+}
 
-  let tabLines = ["E|","A|","D|","G|","B|","E|"];
-
-  function updateTAB(string, fret) {
-    const idx = 6 - string;
-    for (let i = 0; i < 6; i++) {
-      tabLines[i] += (i === idx ? fret : "-");
+// ➤ 周波数の帯域フィルタ
+function bandPass(buffer, minHz, maxHz, sampleRate) {
+    const low = minHz / (sampleRate / 2);
+    const high = maxHz / (sampleRate / 2);
+    const filtered = new Float32Array(buffer.length);
+    for (let i = 1; i < buffer.length; i++) {
+        let sample = buffer[i];
+        if (sample < low || sample > high) sample = 0;
+        filtered[i] = sample;
     }
-    tabEl.textContent = tabLines.map(l => l.slice(-30)).join("\n");
-  }
+    return filtered;
+}
 
-  const freqTable = [];
-  for (let string = 6; string >= 1; string--) {
-    const base = OPEN_STRINGS[6 - string];
-    for (let fret = 0; fret <= 3; fret++) {
-      freqTable.push({ string, fret, freq: base * Math.pow(2, fret / 12) });
-    }
-  }
-
-  function findClosestStringFret(f0) {
-    if (!f0) return null;
-    const c = freqTable.reduce((a, b) =>
-      Math.abs(a.freq - f0) < Math.abs(b.freq - f0) ? a : b
-    );
-    if (Math.abs(c.freq - f0) > TOLERANCES[c.string]) return null;
-    return c;
-  }
-
-  // ===== YIN =====
-  function yin(buffer, threshold = 0.15, sampleRate = 44100) {
-    let tauMax = Math.floor(sampleRate / FMIN);
-    let tauMin = Math.floor(sampleRate / FMAX);
-
-    let yinBuffer = new Array(tauMax).fill(0);
-
-    for (let t = tauMin; t < tauMax; t++) {
-      let sum = 0;
-      for (let i = 0; i < buffer.length - t; i++) {
-        let diff = buffer[i] - buffer[i + t];
-        sum += diff * diff;
-      }
-      yinBuffer[t] = sum;
-    }
-
-    for (let t = tauMin + 1; t < tauMax; t++) {
-      let divisor = yinBuffer.slice(1, t + 1).reduce((a, b) => a + b, 0);
-      yinBuffer[t] = yinBuffer[t] * t / divisor;
-    }
-
-    let tau = -1;
-    for (let t = tauMin; t < tauMax; t++) {
-      if (yinBuffer[t] < threshold) {
-        tau = t;
-        break;
-      }
-    }
-
-    if (tau === -1) return null;
-    return sampleRate / tau;
-  }
-
-  // ===== 音量バー更新 =====
-  function updateVolumeBar(buf) {
-    let rms = 0;
-    for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
-    rms = Math.sqrt(rms / buf.length);
-
-    let volumePercent = Math.min(100, rms * 400);
-    volumeBar.style.width = volumePercent + "%";
-  }
-
-  // ===== AudioWorklet =====
-  let audioContext = null;
-  let mediaStream = null;
-  let workletNode = null;
-
-  async function startAudio() {
+// 🎧 音声開始
+async function startAudio() {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     await audioContext.audioWorklet.addModule("processor.js");
 
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const source = audioContext.createMediaStreamSource(mediaStream);
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    source = audioContext.createMediaStreamSource(stream);
     workletNode = new AudioWorkletNode(audioContext, "audio-processor");
 
     workletNode.port.onmessage = (e) => {
-      const buf = e.data;
+        const buffer = e.data;
 
-      updateVolumeBar(buf);
+        updateVolume(buffer);
 
-      const f0 = yin(buf, 0.15, audioContext.sampleRate);
-      if (!f0) return;
+        const minHz = parseInt(document.getElementById("fmin").value);
+        const maxHz = parseInt(document.getElementById("fmax").value);
 
-      freqLabel.textContent = `${f0.toFixed(1)} Hz`;
+        const f0 = yin(buffer, 0.15, audioContext.sampleRate);
 
-      const n = findClosestStringFret(f0);
-      if (n) updateTAB(n.string, n.fret);
+        if (!f0) return;
+        if (f0 < minHz || f0 > maxHz) return; // ★ 環境ノイズ除去
+
+        document.getElementById("freq").innerText = f0.toFixed(1) + " Hz";
+
+        const note = findClosestStringFret(f0);
+        if (note) updateTab(note.string, note.fret);
     };
 
     source.connect(workletNode);
-  }
+}
 
-  document.getElementById("start-btn").onclick = startAudio;
-})();
+// 🎧 停止
+document.getElementById("stop-btn").onclick = () => {
+    if (audioContext) audioContext.close();
+};
+
+// スライダー表示更新
+document.getElementById("fmin").oninput = (e) =>
+    document.getElementById("fmin-label").innerText = e.target.value;
+
+document.getElementById("fmax").oninput = (e) =>
+    document.getElementById("fmax-label").innerText = e.target.value;
+
+document.getElementById("start-btn").onclick = startAudio;

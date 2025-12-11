@@ -5,6 +5,10 @@ body {
     font-family: Arial;
 }
 
+h2, h3 {
+    margin-top: 20px;
+}
+
 #freq {
     font-size: 28px;
     margin: 20px;
@@ -17,7 +21,6 @@ pre {
     width: 350px;
     margin: auto;
     font-size: 18px;
-    white-space: pre;
 }
 
 button {
@@ -27,7 +30,9 @@ button {
     color: white;
     border: none;
     cursor: pointer;
+    margin: 5px;
 }
+
 button:hover {
     background: #00a000;
 }
@@ -36,10 +41,11 @@ button:hover {
     width: 300px;
     height: 20px;
     background: #333;
-    margin: 10px auto;
+    margin: 20px auto;
     border-radius: 10px;
     overflow: hidden;
 }
+
 #volume-bar {
     height: 100%;
     width: 0%;
@@ -47,17 +53,14 @@ button:hover {
     transition: width 0.05s linear;
 }
 
-.slider-box {
-    margin: 20px auto;
-    width: 300px;
-    text-align: left;
-    font-size: 16px;
+.filter-box {
+    background: #222;
+    padding: 10px;
+    margin: 10px auto;
+    width: 350px;
+    border-radius: 8px;
 }
 
-.slider-box input[type=range] {
-    width: 100%;
-}
-
-.btns {
+.btn-box {
     margin: 20px;
 }

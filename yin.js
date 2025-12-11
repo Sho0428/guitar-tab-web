@@ -4,6 +4,7 @@ function yin(buffer, threshold = 0.15, sampleRate = 44100) {
 
     let yinBuffer = new Array(tauMax).fill(0);
 
+    // 差分
     for (let t = tauMin; t < tauMax; t++) {
         let sum = 0;
         for (let i = 0; i < buffer.length - t; i++) {
@@ -13,6 +14,7 @@ function yin(buffer, threshold = 0.15, sampleRate = 44100) {
         yinBuffer[t] = sum;
     }
 
+    // 累積平均
     for (let t = tauMin + 1; t < tauMax; t++) {
         yinBuffer[t] = yinBuffer[t] * t / yinBuffer.slice(1, t + 1).reduce((a, b) => a + b, 0);
     }
