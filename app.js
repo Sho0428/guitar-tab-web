@@ -1,8 +1,8 @@
 (() => {
   const BLOCK = 2048;
   const SAMPLE_RATE = 44100;
-  const FMIN = 50;
-  const FMAX = 800;
+  let FMIN = 50;
+  let FMAX = 800;
   const OPEN_STRINGS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
   const TOLERANCES = {6:5, 5:5, 4:7, 3:10, 2:12, 1:15};
 
@@ -175,6 +175,26 @@
       cleanup();
     }
   }
+
+const fminSlider = document.getElementById("fmin-slider");
+const fmaxSlider = document.getElementById("fmax-slider");
+const fminValue = document.getElementById("fmin-value");
+const fmaxValue = document.getElementById("fmax-value");
+
+fminSlider.addEventListener("input", () => {
+    FMIN = Number(fminSlider.value);
+    fminValue.textContent = FMIN;
+});
+fmaxSlider.addEventListener("input", () => {
+    FMAX = Number(fmaxSlider.value);
+    fmaxValue.textContent = FMAX;
+});
+
+function yin(buffer, threshold = 0.15, sampleRate = SAMPLE_RATE) {
+    const tauMax = Math.min(Math.floor(sampleRate / FMIN), buffer.length - 1);
+    const tauMin = Math.max(2, Math.floor(sampleRate / FMAX));
+    // ... 既存の差分計算や累積平均など
+}
 
   function cleanup() {
     audioContext = null;
