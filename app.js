@@ -1,106 +1,197 @@
-let audioContext;
-let workletNode;
-let source;
+(() => {
+  const BLOCK = 2048;
+  const SAMPLE_RATE = 44100;
+  const FMIN = 50;
+  const FMAX = 800;
+  const OPEN_STRINGS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
+  const TOLERANCES = {6:5, 5:5, 4:7, 3:10, 2:12, 1:15};
 
-// 弦の基本周波数
-const STRINGS = [
-    {name:"E", freq:329.63},
-    {name:"B", freq:246.94},
-    {name:"G", freq:196.00},
-    {name:"D", freq:146.83},
-    {name:"A", freq:110.00},
-    {name:"E", freq:82.41},
-];
-
-// ➤ 指板計算
-function findClosestStringFret(freq) {
-    if (!freq) return null;
-
-    let best = null;
-    let minDiff = Infinity;
-
-    STRINGS.forEach((s, idx) => {
-        for (let fret = 0; fret <= 20; fret++) {
-            const f2 = s.freq * Math.pow(2, fret / 12);
-            const diff = Math.abs(f2 - freq);
-            if (diff < minDiff) {
-                minDiff = diff;
-                best = { string: idx, fret };
-            }
-        }
-    });
-    return best;
-}
-
-// ➤ タブ譜更新
-function updateTab(stringIndex, fret) {
-    const tab = document.getElementById("tab").innerText.split("\n");
-    tab[5 - stringIndex] += `-${fret}-`;
-    document.getElementById("tab").innerText = tab.join("\n");
-}
-
-// ➤ 音量バー更新
-function updateVolume(buffer) {
-    let rms = Math.sqrt(buffer.reduce((s, x) => s + x * x, 0) / buffer.length);
-    let db = rms * 200; 
-    db = Math.min(100, Math.max(0, db));
-    document.getElementById("volume-bar").style.width = db + "%";
-}
-
-// ➤ 周波数の帯域フィルタ
-function bandPass(buffer, minHz, maxHz, sampleRate) {
-    const low = minHz / (sampleRate / 2);
-    const high = maxHz / (sampleRate / 2);
-    const filtered = new Float32Array(buffer.length);
-    for (let i = 1; i < buffer.length; i++) {
-        let sample = buffer[i];
-        if (sample < low || sample > high) sample = 0;
-        filtered[i] = sample;
+  const freqTable = [];
+  for (let string = 6; string >= 1; string--) {
+    const base = OPEN_STRINGS[6 - string];
+    for (let fret = 0; fret <= 3; fret++) {
+      freqTable.push({ string, fret, freq: base * Math.pow(2, fret / 12) });
     }
-    return filtered;
-}
+  }
 
-// 🎧 音声開始
-async function startAudio() {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    await audioContext.audioWorklet.addModule("processor.js");
+  const freqLabel = document.getElementById('freq');
+  const tabEl = document.getElementById('tab');
+  const startBtn = document.getElementById('start-btn');
+  const stopBtn = document.getElementById('stop-btn');
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    source = audioContext.createMediaStreamSource(stream);
-    workletNode = new AudioWorkletNode(audioContext, "audio-processor");
+  let tabLines = ["E|","A|","D|","G|","B|","E|"];
+  function updateTAB(string, fret) {
+    const idx = 6 - string;
+    for (let i = 0; i < 6; i++) tabLines[i] += (i === idx ? fret : "-");
+    tabEl.textContent = tabLines.map(l => l.slice(-30)).join("\n");
+  }
 
-    workletNode.port.onmessage = (e) => {
-        const buffer = e.data;
+  function findClosest(f0) {
+    if (!f0) return null;
+    const c = freqTable.reduce((a, b) => Math.abs(a.freq - f0) < Math.abs(b.freq - f0) ? a : b);
+    if (Math.abs(c.freq - f0) > TOLERANCES[c.string]) return null;
+    return c;
+  }
 
-        updateVolume(buffer);
+  function yin(buffer, threshold = 0.15, sampleRate = SAMPLE_RATE) {
+    const tauMax = Math.min(Math.floor(sampleRate / FMIN), buffer.length - 1);
+    const tauMin = Math.max(2, Math.floor(sampleRate / FMAX));
+    const yinBuffer = new Float64Array(tauMax + 1);
 
-        const minHz = parseInt(document.getElementById("fmin").value);
-        const maxHz = parseInt(document.getElementById("fmax").value);
+    for (let t = tauMin; t <= tauMax; t++) {
+      let sum = 0;
+      for (let i = 0; i < buffer.length - t; i++) {
+        const diff = buffer[i] - buffer[i + t];
+        sum += diff * diff;
+      }
+      yinBuffer[t] = sum;
+    }
 
-        const f0 = yin(buffer, 0.15, audioContext.sampleRate);
+    let runningSum = 0;
+    for (let t = tauMin; t <= tauMax; t++) {
+      runningSum += yinBuffer[t];
+      yinBuffer[t] = yinBuffer[t] * t / runningSum;
+    }
 
-        if (!f0) return;
-        if (f0 < minHz || f0 > maxHz) return; // ★ 環境ノイズ除去
+    let tau = -1;
+    for (let t = tauMin; t <= tauMax; t++) {
+      if (yinBuffer[t] < threshold) {
+        tau = t;
+        break;
+      }
+    }
+    if (tau === -1) return null;
 
-        document.getElementById("freq").innerText = f0.toFixed(1) + " Hz";
+    if (tau + 1 <= tauMax && tau - 1 >= tauMin) {
+      const x0 = yinBuffer[tau - 1];
+      const x1 = yinBuffer[tau];
+      const x2 = yinBuffer[tau + 1];
+      const a = (x0 + x2 - 2 * x1) / 2;
+      const b = (x2 - x0) / 2;
+      if (a) tau = tau - b / (2 * a);
+    }
+    return sampleRate / tau;
+  }
 
-        const note = findClosestStringFret(f0);
-        if (note) updateTab(note.string, note.fret);
-    };
+  let audioContext = null;
+  let workletNode = null;
+  let mediaStream = null;
 
-    source.connect(workletNode);
-}
+  const ring = new Float32Array(BLOCK * 2);
+  let ringWrite = 0;
+  let ringCount = 0;
+  const recentNotes = [];
+  const RECENT_MAX = 6;
 
-// 🎧 停止
-document.getElementById("stop-btn").onclick = () => {
-    if (audioContext) audioContext.close();
-};
+  function pushToRing(chunk) {
+    for (let i = 0; i < chunk.length; i++) ring[(ringWrite + i) % ring.length] = chunk[i];
+    ringWrite = (ringWrite + chunk.length) % ring.length;
+    ringCount = Math.min(ringCount + chunk.length, ring.length);
+  }
 
-// スライダー表示更新
-document.getElementById("fmin").oninput = (e) =>
-    document.getElementById("fmin-label").innerText = e.target.value;
+  function readBlock() {
+    if (ringCount < BLOCK) return null;
+    const out = new Float32Array(BLOCK);
+    let start = (ringWrite - BLOCK + ring.length) % ring.length;
+    for (let i = 0; i < BLOCK; i++) out[i] = ring[(start + i) % ring.length];
+    ringCount = Math.max(0, ringCount - Math.floor(BLOCK / 2));
+    return out;
+  }
 
-document.getElementById("fmax").oninput = (e) =>
-    document.getElementById("fmax-label").innerText = e.target.value;
+  function handleIncomingChunk(chunk) {
+    const arr = (chunk instanceof Float32Array) ? chunk : Float32Array.from(chunk);
+    pushToRing(arr);
+    const block = readBlock();
+    if (!block) return;
 
-document.getElementById("start-btn").onclick = startAudio;
+    // 音量バー
+    let rms = 0;
+    for (let i = 0; i < block.length; i++) rms += block[i] ** 2;
+    rms = Math.sqrt(rms / block.length);
+    const volumePercent = Math.min(100, rms * 400);
+    document.getElementById("volume-bar").style.width = volumePercent + "%";
+    document.getElementById("vu-meter").style.width = volumePercent + "%";
+
+    const f0 = yin(block, 0.15, audioContext.sampleRate || SAMPLE_RATE);
+    if (!f0 || isNaN(f0) || f0 <= 0) return;
+    freqLabel.textContent = `${f0.toFixed(1)} Hz`;
+
+    const n = findClosest(f0);
+    if (!n) return;
+
+    recentNotes.push(`${n.string}-${n.fret}`);
+    if (recentNotes.length > RECENT_MAX) recentNotes.shift();
+
+    const counts = {};
+    for (const r of recentNotes) counts[r] = (counts[r] || 0) + 1;
+    const best = Object.entries(counts).find(([k, v]) => v >= 1); // 1にして即反映
+    if (!best) return;
+
+    const [s, f] = best[0].split('-').map(Number);
+    updateTAB(s, f);
+  }
+
+  async function startAudio() {
+    if (audioContext) return;
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      await audioContext.audioWorklet.addModule('processor.js');
+
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      workletNode = new AudioWorkletNode(audioContext, 'audio-processor');
+      workletNode.port.onmessage = (e) => handleIncomingChunk(e.data);
+
+      source.connect(workletNode);
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      startBtn.textContent = '実行中…';
+      startBtn.style.background = '#aa0000';
+      startBtn.style.cursor = 'not-allowed';
+    } catch (err) {
+      console.error(err);
+      alert('マイク初期化エラー。コンソールを確認してください。');
+      cleanup();
+    }
+  }
+
+  function stopAudio() {
+    if (!audioContext) return;
+    try {
+      if (workletNode) {
+        workletNode.port.onmessage = null;
+        workletNode.disconnect?.();
+        workletNode = null;
+      }
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+      audioContext.close?.();
+    } catch (err) {
+      console.warn(err);
+    } finally {
+      cleanup();
+    }
+  }
+
+  function cleanup() {
+    audioContext = null;
+    workletNode = null;
+    ringWrite = 0;
+    ringCount = 0;
+    recentNotes.length = 0;
+
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    startBtn.textContent = '▶ 開始';
+    startBtn.style.background = '#008000';
+    startBtn.style.cursor = 'pointer';
+  }
+
+  startBtn.addEventListener('click', startAudio);
+  stopBtn.addEventListener('click', stopAudio);
+
+  cleanup();
+})();
