@@ -16,6 +16,17 @@
 
 <div id="result">コード: ---</div>
 
+<h3 style="margin-top:20px;">🎚 入力帯域フィルター設定</h3>
+
+<div style="width:320px;margin:0 auto;text-align:left;">
+    <label>最低周波数: <span id="fmin-val">50</span> Hz</label>
+    <input type="range" id="fmin" min="30" max="200" value="50" step="1">
+    
+    <label>最高周波数: <span id="fmax-val">800</span> Hz</label>
+    <input type="range" id="fmax" min="300" max="2000" value="800" step="1">
+</div>
+
+
 <button id="start">Start</button>
 
 <script src="script.js"></script>

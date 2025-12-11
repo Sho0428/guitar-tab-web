@@ -14,8 +14,8 @@ let detectCooldown = 600; // ms クールタイム
 // 🎸 YIN アルゴリズム
 // ================================
 function yin(buffer, threshold = 0.15, sampleRate = 44100) {
-    let tauMax = Math.floor(sampleRate / 50);
-    let tauMin = Math.floor(sampleRate / 800);
+    let tauMax = Math.floor(sampleRate / FMIN);
+    let tauMin = Math.floor(sampleRate / FMAX);
 
     let yinBuffer = new Array(tauMax).fill(0);
 
@@ -44,6 +44,20 @@ function yin(buffer, threshold = 0.15, sampleRate = 44100) {
 
     return sampleRate / tau;
 }
+
+let FMIN = 50;
+let FMAX = 800;
+
+// スライダー更新
+document.getElementById("fmin").addEventListener("input", e => {
+    FMIN = Number(e.target.value);
+    document.getElementById("fmin-val").textContent = FMIN;
+});
+
+document.getElementById("fmax").addEventListener("input", e => {
+    FMAX = Number(e.target.value);
+    document.getElementById("fmax-val").textContent = FMAX;
+});
 
 // ================================
 // 🎼 コード判定（簡易）
