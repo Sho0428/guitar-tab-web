@@ -23,6 +23,17 @@ E|
         <div id="volume-bar"></div>
     </div>
 
+
+  <div style="margin: 10px;">
+    <label>最低周波数: <span id="fmin-value">50</span> Hz</label>
+    <input type="range" id="fmin-slider" min="20" max="200" value="50">
+  </div>
+  <div style="margin: 10px;">
+    <label>最高周波数: <span id="fmax-value">800</span> Hz</label>
+    <input type="range" id="fmax-slider" min="400" max="2000" value="800">
+  </div>
+
+
     <div style="margin:12px;">
         <button id="start-btn">▶ 開始</button>
         <button id="stop-btn">■ 停止</button>
