@@ -1,38 +1,23 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>🎸 Web タブ譜自動判定</title>
+    <title>Guitar Pitch Detector</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h2>🎵 現在の音</h2>
-    <div id="freq">---</div>
 
-    <pre id="tab">
-E|
-A|
-D|
-G|
-B|
-E|
-    </pre>
+<h2>🎸 Guitar Pitch Detector</h2>
+<div id="freq">-- Hz</div>
 
-    <!-- 上部音量バー -->
-    <div id="volume-bar-bg">
-        <div id="volume-bar"></div>
-    </div>
+<div id="volume-bar-bg">
+    <div id="volume-bar"></div>
+</div>
 
-    <div style="margin:12px;">
-        <button id="start-btn">▶ 開始</button>
-        <button id="stop-btn">■ 停止</button>
-    </div>
+<div id="result">コード: ---</div>
 
-    <!-- 下部 VUメーター -->
-    <div id="vu-meter-bg">
-        <div id="vu-meter"></div>
-    </div>
+<button id="start">Start</button>
 
-    <script src="app.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

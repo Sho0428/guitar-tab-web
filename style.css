@@ -11,12 +11,10 @@ body {
     color: #00ff7f;
 }
 
-pre {
-    background: #111;
-    padding: 20px;
-    width: 350px;
-    margin: auto;
-    font-size: 18px;
+#result {
+    font-size: 26px;
+    margin: 20px;
+    color: #ffa500;
 }
 
 button {
@@ -27,7 +25,6 @@ button {
     border: none;
     cursor: pointer;
 }
-
 button:hover {
     background: #00a000;
 }
@@ -45,24 +42,5 @@ button:hover {
     height: 100%;
     width: 0%;
     background: #00ff7f;
-    transition: width 0.05s linear;
-}
-
-#vu-meter-bg {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80%;
-    height: 20px;
-    background: #333;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-#vu-meter {
-    height: 100%;
-    width: 0%;
-    background: #00ffff;
     transition: width 0.05s linear;
 }
